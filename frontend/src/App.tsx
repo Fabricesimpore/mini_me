@@ -1,35 +1,52 @@
-import { useState } from 'react'
+import React, { useState } from 'react';
+import Login from './components/Login';
+import Register from './components/Register';
+import { useAuth } from './components/AuthContext';
+import CognitiveProfile from './components/CognitiveProfile';
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  const [showLogin, setShowLogin] = useState(true);
+  const { user, login, logout } = useAuth();
+
+  const handleLoginSuccess = (token: string, user: any) => {
+    login(token, user);
+  };
+
+  const handleRegisterSuccess = () => {
+    setShowLogin(true);
+  };
+
+  if (user) {
+    return (
+      <div>
+        <h2>Welcome, {user.name || user.email}!</h2>
+        <p>You are logged in.</p>
+        <button onClick={logout}>Logout</button>
+        <CognitiveProfile />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div style={{ maxWidth: 400, margin: '2rem auto' }}>
+      <div style={{ marginBottom: 16 }}>
+        <button onClick={() => setShowLogin(true)} disabled={showLogin}>
+          Login
         </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+        <button onClick={() => setShowLogin(false)} disabled={!showLogin}>
+          Register
+        </button>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+      {showLogin ? (
+        <Login onLoginSuccess={handleLoginSuccess} />
+      ) : (
+        <Register onRegisterSuccess={handleRegisterSuccess} />
+      )}
+    </div>
+  );
+};
 
-export default App
+export default App;
