@@ -13,6 +13,9 @@ from backend.app.services.auth import decode_access_token
 from backend.app.models.user import User  # Add this import for type hints
 from backend.app.models.user import Base
 from backend.app.config import engine
+from fastapi import Body
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
 
 Base.metadata.create_all(bind=engine)
 
@@ -125,3 +128,56 @@ def update_me(update: UserUpdate, db: Session = Depends(get_db), current_user: U
         "name": current_user.name,
         "created_at": str(current_user.created_at)
     }
+
+class CognitiveProfileModel(BaseModel):
+    communication_style: Optional[Dict[str, Any]] = None
+    decision_patterns: Optional[Dict[str, Any]] = None
+    value_system: Optional[Dict[str, Any]] = None
+
+@app.post("/users/{user_id}/cognitive-profile")
+def create_cognitive_profile(user_id: int, profile: CognitiveProfileModel, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.cognitive_profile is not None:
+        raise HTTPException(status_code=400, detail="Cognitive profile already exists")
+    user.cognitive_profile = profile.dict()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user.cognitive_profile
+
+@app.get("/users/{user_id}/cognitive-profile")
+def get_cognitive_profile(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.cognitive_profile is None:
+        raise HTTPException(status_code=404, detail="Cognitive profile not found")
+    return user.cognitive_profile
+
+@app.put("/users/{user_id}/cognitive-profile")
+def update_cognitive_profile(user_id: int, profile: CognitiveProfileModel, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.cognitive_profile is None:
+        raise HTTPException(status_code=404, detail="Cognitive profile not found")
+    user.cognitive_profile = profile.dict()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user.cognitive_profile
+
+@app.delete("/users/{user_id}/cognitive-profile")
+def delete_cognitive_profile(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.cognitive_profile is None:
+        raise HTTPException(status_code=404, detail="Cognitive profile not found")
+    user.cognitive_profile = None
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"detail": "Cognitive profile deleted"}

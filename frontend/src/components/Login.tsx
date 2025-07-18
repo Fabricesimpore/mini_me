@@ -29,7 +29,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       });
       const data = await response.json();
       if (response.ok && data.access_token) {
-        if (onLoginSuccess) onLoginSuccess(data.access_token, { email });
+        // Fetch user info from /me
+        const meResponse = await fetch('http://localhost:8000/me', {
+          headers: {
+            'Authorization': `Bearer ${data.access_token}`,
+          },
+        });
+        const user = await meResponse.json();
+        if (onLoginSuccess) onLoginSuccess(data.access_token, user);
       } else if (data.error) {
         setError(data.error);
       } else {

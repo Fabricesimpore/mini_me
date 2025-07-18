@@ -19,6 +19,11 @@ const CognitiveProfile: React.FC = () => {
             'Content-Type': 'application/json',
           },
         });
+        if (response.status === 404) {
+          setProfile(null);
+          setError('404');
+          return;
+        }
         if (!response.ok) throw new Error('Failed to fetch profile');
         const data = await response.json();
         setProfile(data);
@@ -31,7 +36,67 @@ const CognitiveProfile: React.FC = () => {
     fetchProfile();
   }, [user, token]);
 
+  // New: Profile creation form state
+  const [form, setForm] = useState({
+    communication_style: '',
+    decision_patterns: '',
+    value_system: '',
+  });
+  const [creating, setCreating] = useState(false);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !token) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://localhost:8000/users/${user.id}/cognitive-profile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          communication_style: { value: form.communication_style },
+          decision_patterns: { value: form.decision_patterns },
+          value_system: { value: form.value_system },
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create profile');
+      const data = await response.json();
+      setProfile(data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Unknown error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) return <div>Loading cognitive profile...</div>;
+  if (error === '404') return (
+    <div>
+      <p>No profile found. Create your cognitive profile!</p>
+      <form onSubmit={handleCreate}>
+        <div>
+          <label>Communication Style:</label>
+          <input name="communication_style" value={form.communication_style} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Decision Patterns:</label>
+          <input name="decision_patterns" value={form.decision_patterns} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Value System:</label>
+          <input name="value_system" value={form.value_system} onChange={handleChange} required />
+        </div>
+        <button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Profile'}</button>
+      </form>
+      {error && error !== '404' && <div style={{ color: 'red' }}>Error: {error}</div>}
+    </div>
+  );
   if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
   if (!profile) return <div>No profile data available.</div>;
 
