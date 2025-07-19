@@ -159,16 +159,32 @@ const DigitalTwinChat: React.FC = () => {
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   </div>
-                  <p
+                  <div
                     className={`text-xs text-gray-500 mt-1 ${
                       message.role === 'user' ? 'text-right' : 'text-left'
                     }`}
                   >
-                    {formatTime(message.timestamp)}
-                    {message.metadata?.memory_stored && (
-                      <span className="ml-2 text-green-600">• Stored</span>
+                    <p>{formatTime(message.timestamp)}</p>
+                    {message.role === 'assistant' && message.metadata && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {message.metadata.memory_stored && (
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            ✓ Stored
+                          </span>
+                        )}
+                        {message.metadata.intent && (
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            {message.metadata.intent}
+                          </span>
+                        )}
+                        {message.metadata.confidence && message.metadata.confidence > 0 && (
+                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                            {Math.round(message.metadata.confidence * 100)}% sure
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>
