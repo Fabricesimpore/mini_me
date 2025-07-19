@@ -1,52 +1,46 @@
-import React, { useState } from 'react';
-import Login from './components/Login';
-import Register from './components/Register';
-import { useAuth } from './components/AuthContext';
-import CognitiveProfile from './components/CognitiveProfile';
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import BehavioralData from './pages/BehavioralData'
+import Memory from './pages/Memory'
+import Integrations from './pages/Integrations'
+import Settings from './pages/Settings'
+import Chat from './pages/Chat'
+import { useAuthStore } from './store/authStore'
+import { initializeWebSocket } from './services/websocket'
 
-const App: React.FC = () => {
-  const [showLogin, setShowLogin] = useState(true);
-  const { user, login, logout } = useAuth();
+function App() {
+  const { isAuthenticated, user } = useAuthStore()
 
-  const handleLoginSuccess = (token: string, user: any) => {
-    login(token, user);
-  };
-
-  const handleRegisterSuccess = () => {
-    setShowLogin(true);
-  };
-
-  if (user) {
-    return (
-      <div>
-        <h2>Welcome, {user.name || user.email}!</h2>
-        <p>You are logged in.</p>
-        <button onClick={logout}>Logout</button>
-        <CognitiveProfile />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Initialize WebSocket connection when user logs in
+      // Disabled for now during initial setup
+      // initializeWebSocket(user.id)
+    }
+  }, [isAuthenticated, user])
 
   return (
-    <div style={{ maxWidth: 400, margin: '2rem auto' }}>
-      <div style={{ marginBottom: 16 }}>
-        <button onClick={() => setShowLogin(true)} disabled={showLogin}>
-          Login
-        </button>
-        <button onClick={() => setShowLogin(false)} disabled={!showLogin}>
-          Register
-        </button>
-      </div>
-      {showLogin ? (
-        <Login onLoginSuccess={handleLoginSuccess} />
-      ) : (
-        <Register onRegisterSuccess={handleRegisterSuccess} />
-      )}
-    </div>
-  );
-};
+    <Routes>
+      <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
+      <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+      
+      <Route
+        path="/"
+        element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="chat" element={<Chat />} />
+        <Route path="behavioral" element={<BehavioralData />} />
+        <Route path="memory" element={<Memory />} />
+        <Route path="integrations" element={<Integrations />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+    </Routes>
+  )
+}
 
-export default App;
+export default App
