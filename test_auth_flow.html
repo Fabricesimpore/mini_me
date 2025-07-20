@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Auth Flow</title>
+</head>
+<body>
+    <h1>Test Authentication Flow</h1>
+    
+    <div id="register">
+        <h2>Register</h2>
+        <form id="registerForm">
+            <input type="email" id="regEmail" placeholder="Email" value="test@test.com"><br>
+            <input type="text" id="regUsername" placeholder="Username" value="testuser"><br>
+            <input type="password" id="regPassword" placeholder="Password" value="test123"><br>
+            <button type="submit">Register</button>
+        </form>
+        <div id="regResult"></div>
+    </div>
+    
+    <div id="login">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="email" id="loginEmail" placeholder="Email" value="test@test.com"><br>
+            <input type="password" id="loginPassword" placeholder="Password" value="test123"><br>
+            <button type="submit">Login</button>
+        </form>
+        <div id="loginResult"></div>
+    </div>
+
+    <script>
+        // Register
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('regEmail').value;
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, username, password }),
+                });
+                
+                const data = await response.json();
+                document.getElementById('regResult').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('regResult').innerHTML = `Error: ${error.message}`;
+            }
+        });
+        
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                // Using URLSearchParams for form-urlencoded
+                const params = new URLSearchParams();
+                params.append('username', email);
+                params.append('password', password);
+                
+                const response = await fetch('http://localhost:8000/api/auth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params,
+                });
+                
+                const data = await response.json();
+                document.getElementById('loginResult').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

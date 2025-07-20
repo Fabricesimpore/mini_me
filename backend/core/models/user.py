@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -16,6 +16,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    integrations_data = Column(JSON, nullable=True, default={})
     
     # Relationships
     memories = relationship("Memory", back_populates="user", cascade="all, delete-orphan")

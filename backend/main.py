@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 from typing import Dict
 
-from api import auth, health, behavioral, memory, integrations, chat
+from api import auth, health, behavioral, memory, integrations, chat, cognitive_profile, gmail, calendar, todoist, screen_observer, ml_models, recommendations
 from core.database import init_db
 from core.websocket_manager import WebSocketManager
 
@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
     logger.info("Starting Digital Twin Platform...")
-    await init_db()
+    # await init_db()  # Commented out for now to allow startup without database
     yield
     # Shutdown
     logger.info("Shutting down Digital Twin Platform...")
@@ -51,6 +51,13 @@ app.include_router(behavioral.router, prefix="/api/behavioral", tags=["behaviora
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(cognitive_profile.router, prefix="/api/profile", tags=["cognitive_profile"])
+app.include_router(gmail.router, prefix="/api/gmail", tags=["gmail"])
+app.include_router(calendar.router, prefix="/api/calendar", tags=["calendar"])
+app.include_router(todoist.router, prefix="/api/todoist", tags=["todoist"])
+app.include_router(screen_observer.router, prefix="/api/screen-observer", tags=["screen_observer"])
+app.include_router(ml_models.router, prefix="/api/ml", tags=["ml_models"])
+app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
 
 
 @app.websocket("/ws/{user_id}")

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from core.database import get_db
 from api.auth import get_current_user
@@ -9,6 +10,7 @@ from collectors.screen_collector import ScreenObserver
 from collectors.communication_collector import CommunicationAnalyzer
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Initialize collectors
 screen_observer = ScreenObserver()
@@ -123,4 +125,44 @@ async def record_decision(
         "user_id": user_id,
         "decision_id": "temp-decision-id",
         "recorded_at": datetime.utcnow()
+    }
+
+@router.post("/track-batch")
+async def track_batch_behaviors(
+    batch_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Track batch of behaviors from browser extension"""
+    user_id = current_user["user_id"]
+    behaviors = batch_data.get("behaviors", [])
+    source = batch_data.get("source", "unknown")
+    
+    # Process each behavior
+    processed_count = 0
+    for behavior in behaviors:
+        try:
+            # Store behavior data
+            # TODO: Implement actual storage in database
+            processed_count += 1
+            
+            # Extract patterns based on behavior type
+            if behavior["type"] == "page_visit":
+                # Track domain visits
+                pass
+            elif behavior["type"] == "click":
+                # Track interaction patterns
+                pass
+            elif behavior["type"] == "time_spent":
+                # Track engagement metrics
+                pass
+                
+        except Exception as e:
+            logger.error(f"Error processing behavior: {e}")
+    
+    return {
+        "status": "success",
+        "processed": processed_count,
+        "total": len(behaviors),
+        "source": source
     }

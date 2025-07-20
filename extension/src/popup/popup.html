@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Twin Browser Tracker</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Digital Twin</h1>
+            <p class="subtitle">Browser Behavior Tracker</p>
+        </header>
+
+        <div id="auth-section" class="section">
+            <div id="login-form" class="hidden">
+                <h2>Login to Your Digital Twin</h2>
+                <input type="email" id="email" placeholder="Email" />
+                <input type="password" id="password" placeholder="Password" />
+                <button id="login-btn" class="primary-btn">Login</button>
+                <p class="error-msg hidden" id="error-msg"></p>
+            </div>
+
+            <div id="logged-in" class="hidden">
+                <div class="user-info">
+                    <p>Logged in as: <strong id="user-email"></strong></p>
+                    <button id="logout-btn" class="secondary-btn">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="stats-section" class="section hidden">
+            <h2>Today's Activity</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="pages-visited">0</div>
+                    <div class="stat-label">Pages Visited</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="time-spent">0m</div>
+                    <div class="stat-label">Time Online</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="clicks-made">0</div>
+                    <div class="stat-label">Clicks Made</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="domains-visited">0</div>
+                    <div class="stat-label">Sites Visited</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tracking-section" class="section hidden">
+            <h2>Tracking Status</h2>
+            <div class="tracking-status">
+                <div class="status-indicator" id="status-indicator"></div>
+                <span id="status-text">Active</span>
+            </div>
+            
+            <div class="toggle-container">
+                <label class="toggle">
+                    <input type="checkbox" id="tracking-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span>Enable Tracking</span>
+            </div>
+
+            <div class="current-site">
+                <h3>Current Site</h3>
+                <p id="current-domain">-</p>
+                <p class="time-on-site">Time on site: <span id="time-on-site">0s</span></p>
+            </div>
+        </div>
+
+        <div id="privacy-section" class="section hidden">
+            <h2>Privacy Settings</h2>
+            <div class="privacy-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="track-clicks" checked>
+                    <span>Track Clicks</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="track-scrolls" checked>
+                    <span>Track Scrolling</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="track-time" checked>
+                    <span>Track Time Spent</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="track-forms" checked>
+                    <span>Track Form Interactions</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="#" id="open-dashboard">Open Dashboard</a>
+            <span class="separator">•</span>
+            <a href="#" id="view-patterns">View Patterns</a>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -38,8 +38,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     const userData = await authService.register(email, username, password)
     set({ user: userData })
     
-    // Auto-login after registration
-    const response = await authService.login(username, password)
+    // Auto-login after registration using email
+    const response = await authService.login(email, password)
     set({
       token: response.access_token,
       isAuthenticated: true,

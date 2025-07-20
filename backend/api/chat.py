@@ -11,8 +11,10 @@ from api.auth import get_current_user
 from core.models.user import User
 from core.models.memory import Memory, MemoryType
 from app.services.enhanced_nlp import EnhancedNLPService
+from app.services.memory_service import MemoryService
 
 router = APIRouter()
+memory_service = MemoryService()
 
 @router.post("/message")
 async def send_message(
@@ -104,14 +106,14 @@ async def send_message(
                 memory_metadata[entity["type"]] = []
             memory_metadata[entity["type"]].append(entity["value"])
         
-        memory = Memory(
+        # Use memory service to store with embeddings
+        memory = await memory_service.store_memory(
+            db=db,
             user_id=user_uuid,
             content=message,
             memory_type=MemoryType.EPISODIC,
-            meta_data=memory_metadata
+            metadata=memory_metadata
         )
-        db.add(memory)
-        await db.commit()
         
         metadata["memory_stored"] = True
         response = nlp.generate_contextual_response(intent, entities, message=message, 
@@ -119,41 +121,33 @@ async def send_message(
                                                    in_conversation=in_conversation)
     
     elif intent == "memory_query":
-        # Build query based on time info and entities
-        query = select(Memory).where(Memory.user_id == user_uuid)
-        
-        # Apply time filters if present
-        if time_info["has_time"] and time_info["date"]:
-            target_date = time_info["date"]
-            if isinstance(target_date, date):
-                # Query for the entire day
-                start_of_day = datetime.combine(target_date, datetime.min.time())
-                end_of_day = datetime.combine(target_date, datetime.max.time())
-                query = query.where(
-                    and_(
-                        Memory.created_at >= start_of_day,
-                        Memory.created_at <= end_of_day
-                    )
-                )
-        
-        # Search for entity mentions in content
+        # Build search query from entities
         search_terms = []
         for entity in entities:
             if entity["type"] in ["person", "place", "activity"]:
-                search_terms.append(entity["value"].lower())
+                search_terms.append(entity["value"])
         
-        if search_terms:
-            search_conditions = []
-            for term in search_terms:
-                search_conditions.append(func.lower(Memory.content).contains(term))
-            
-            query = query.where(or_(*search_conditions))
+        search_query = " ".join(search_terms) if search_terms else message
         
-        # Execute query
-        result = await db.execute(
-            query.order_by(Memory.created_at.desc()).limit(10)
+        # Determine time range if present
+        time_range = None
+        if time_info["has_time"] and time_info["date"]:
+            target_date = time_info["date"]
+            if isinstance(target_date, date):
+                start_of_day = datetime.combine(target_date, datetime.min.time())
+                end_of_day = datetime.combine(target_date, datetime.max.time())
+                time_range = (start_of_day, end_of_day)
+        
+        # Use hybrid search for better results
+        search_results = await memory_service.hybrid_search(
+            db=db,
+            user_id=user_uuid,
+            query=search_query,
+            time_range=time_range,
+            limit=10
         )
-        memories = result.scalars().all()
+        
+        memories = [result["memory"] for result in search_results if "memory" in result]
         
         response = nlp.generate_contextual_response(intent, entities, memories, time_info, message, 
                                                    previous_response, in_conversation)
@@ -161,11 +155,13 @@ async def send_message(
     
     elif intent == "reflection":
         # Store as semantic memory
-        memory = Memory(
+        # Use memory service to store with embeddings
+        memory = await memory_service.store_memory(
+            db=db,
             user_id=user_uuid,
             content=message,
             memory_type=MemoryType.SEMANTIC,
-            meta_data={
+            metadata={
                 "source": "chat",
                 "intent": intent,
                 "reflection": True,
@@ -173,8 +169,6 @@ async def send_message(
                 "emotions": [e["value"] for e in entities if e["type"] == "emotion"]
             }
         )
-        db.add(memory)
-        await db.commit()
         
         metadata["memory_stored"] = True
         response = nlp.generate_contextual_response(intent, entities, message=message, 
@@ -189,11 +183,13 @@ async def send_message(
             if hasattr(serializable_time_info["date"], "isoformat"):
                 serializable_time_info["date"] = serializable_time_info["date"].isoformat()
         
-        memory = Memory(
+        # Use memory service to store with embeddings
+        memory = await memory_service.store_memory(
+            db=db,
             user_id=user_uuid,
             content=message,
             memory_type=MemoryType.PROCEDURAL,
-            meta_data={
+            metadata={
                 "source": "chat",
                 "intent": intent,
                 "future_task": True,
@@ -201,8 +197,6 @@ async def send_message(
                 "time_info": serializable_time_info
             }
         )
-        db.add(memory)
-        await db.commit()
         
         metadata["memory_stored"] = True
         response = nlp.generate_contextual_response(intent, entities, message=message, 

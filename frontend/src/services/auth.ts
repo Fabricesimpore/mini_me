@@ -2,11 +2,16 @@ import { api } from './api'
 
 export const authService = {
   async login(username: string, password: string) {
-    const formData = new FormData()
-    formData.append('username', username)
-    formData.append('password', password)
+    // OAuth2PasswordRequestForm expects application/x-www-form-urlencoded
+    const params = new URLSearchParams()
+    params.append('username', username)
+    params.append('password', password)
     
-    const response = await api.post('/api/auth/token', formData)
+    const response = await api.post('/api/auth/token', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
     return response.data
   },
 

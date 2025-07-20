@@ -1,170 +1,146 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from typing import List, Optional
 from datetime import datetime
-import json
+from pydantic import BaseModel
 import uuid
-
-from core.database import get_db
-from api.auth import get_current_user
-from core.models.user import User
-from core.models.memory import Memory, MemoryType
+import asyncio
 
 router = APIRouter()
 
-# Simple in-memory storage for chat messages (temporary)
+# In-memory storage
 chat_history = {}
+active_connections = {}
 
-@router.post("/message")
-async def send_message(
-    message_data: Dict[str, Any],
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Process a chat message and generate a response"""
-    message = message_data.get("message", "")
-    user_id = current_user["user_id"]
+# Schemas
+class ChatMessage(BaseModel):
+    content: str
+    parent_id: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    id: str
+    content: str
+    timestamp: datetime
+    user_id: str
+    is_twin: bool
+    parent_id: Optional[str] = None
+
+class ChatInsight(BaseModel):
+    topic: str
+    frequency: int
+    sentiment: str
+    last_discussed: datetime
+
+# Helper function to get user from token (simplified)
+async def get_current_user(token: str) -> dict:
+    # In real app, decode JWT token
+    return {"id": "user-1", "email": "user@example.com"}
+
+@router.post("/message", response_model=ChatResponse)
+async def send_message(message: ChatMessage, user = Depends(get_current_user)):
+    """Send a message to the digital twin"""
+    user_id = user["id"]
     
-    if not message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    # Initialize chat history for user if not exists
+    if user_id not in chat_history:
+        chat_history[user_id] = []
     
-    # Create a temporary UUID for the user if not valid UUID
-    try:
-        user_uuid = uuid.UUID(user_id)
-    except ValueError:
-        # Use a deterministic UUID based on username for consistency
-        user_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, user_id)
-    
-    # Simple intent detection
-    intent = "general"
-    if any(word in message.lower() for word in ["remember", "went", "did", "had", "met"]):
-        intent = "memory_storage"
-    elif any(word in message.lower() for word in ["when", "what", "who", "where"]):
-        intent = "memory_query"
-    elif any(word in message.lower() for word in ["feel", "feeling", "stressed", "happy"]):
-        intent = "reflection"
-    
-    # Generate response based on intent
-    if intent == "memory_storage":
-        # Store the memory
-        memory = Memory(
-            user_id=user_uuid,
-            content=message,
-            memory_type=MemoryType.EPISODIC,
-            meta_data={"source": "chat", "intent": intent}
-        )
-        db.add(memory)
-        await db.commit()
-        
-        response = "I'll remember that for you. Your memory has been stored."
-        metadata = {"intent": intent, "memory_stored": True}
-    
-    elif intent == "memory_query":
-        # Query memories
-        result = await db.execute(
-            select(Memory)
-            .where(Memory.user_id == user_uuid)
-            .order_by(Memory.created_at.desc())
-            .limit(5)
-        )
-        memories = result.scalars().all()
-        
-        if memories:
-            response = f"I found {len(memories)} recent memories. Your most recent memory: {memories[0].content}"
-        else:
-            response = "I don't have any memories stored yet. Try telling me about your day!"
-        metadata = {"intent": intent, "memories_found": len(memories)}
-    
-    elif intent == "reflection":
-        # Store reflection
-        memory = Memory(
-            user_id=user_uuid,
-            content=message,
-            memory_type=MemoryType.SEMANTIC,
-            meta_data={"source": "chat", "intent": intent, "reflection": True}
-        )
-        db.add(memory)
-        await db.commit()
-        
-        response = "Thank you for sharing how you feel. I've noted this in your personal reflections."
-        metadata = {"intent": intent, "memory_stored": True}
-    
-    else:
-        response = "I'm here to help you remember and reflect. Tell me about your day, ask about your memories, or share how you're feeling."
-        metadata = {"intent": intent}
-    
-    # Store conversation in memory
-    conversation_memory = Memory(
-        user_id=user_uuid,
-        content=json.dumps({
-            "user_message": message,
-            "assistant_response": response,
-            "metadata": metadata
-        }),
-        memory_type=MemoryType.CONVERSATION,
-        meta_data={"timestamp": datetime.utcnow().isoformat()}
-    )
-    db.add(conversation_memory)
-    await db.commit()
-    await db.refresh(conversation_memory)
-    
-    return {
-        "id": str(conversation_memory.id),
-        "response": response,
-        "timestamp": datetime.utcnow().isoformat(),
-        "metadata": metadata
+    # Create user message
+    user_msg = {
+        "id": str(uuid.uuid4()),
+        "content": message.content,
+        "timestamp": datetime.utcnow(),
+        "user_id": user_id,
+        "is_twin": False,
+        "parent_id": message.parent_id
     }
+    chat_history[user_id].append(user_msg)
+    
+    # Generate twin response (simplified)
+    twin_response = {
+        "id": str(uuid.uuid4()),
+        "content": f"I understand you're saying: '{message.content}'. As your digital twin, I'm learning your patterns and will provide more personalized responses as we interact more.",
+        "timestamp": datetime.utcnow(),
+        "user_id": user_id,
+        "is_twin": True,
+        "parent_id": user_msg["id"]
+    }
+    chat_history[user_id].append(twin_response)
+    
+    return ChatResponse(**twin_response)
 
-@router.get("/history")
+@router.get("/history", response_model=List[ChatResponse])
 async def get_chat_history(
     limit: int = 50,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    offset: int = 0,
+    user = Depends(get_current_user)
 ):
     """Get chat history for the current user"""
-    user_id = current_user["user_id"]
+    user_id = user["id"]
     
-    # Create a temporary UUID for the user if not valid UUID
+    if user_id not in chat_history:
+        return []
+    
+    messages = chat_history[user_id]
+    return [ChatResponse(**msg) for msg in messages[offset:offset + limit]]
+
+@router.get("/insights", response_model=List[ChatInsight])
+async def get_chat_insights(user = Depends(get_current_user)):
+    """Get insights from chat history"""
+    # Mock insights for now
+    return [
+        ChatInsight(
+            topic="Work",
+            frequency=15,
+            sentiment="positive",
+            last_discussed=datetime.utcnow()
+        ),
+        ChatInsight(
+            topic="Health",
+            frequency=8,
+            sentiment="neutral",
+            last_discussed=datetime.utcnow()
+        ),
+        ChatInsight(
+            topic="Learning",
+            frequency=12,
+            sentiment="positive",
+            last_discussed=datetime.utcnow()
+        )
+    ]
+
+@router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for real-time chat"""
+    await websocket.accept()
+    active_connections[user_id] = websocket
+    
     try:
-        user_uuid = uuid.UUID(user_id)
-    except ValueError:
-        # Use a deterministic UUID based on username for consistency
-        user_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, user_id)
+        while True:
+            # Receive message from client
+            data = await websocket.receive_json()
+            
+            # Process message
+            response = {
+                "type": "message",
+                "content": f"Twin response to: {data.get('content', '')}",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            
+            # Send response
+            await websocket.send_json(response)
+            
+    except WebSocketDisconnect:
+        del active_connections[user_id]
+
+@router.delete("/history/{message_id}")
+async def delete_message(message_id: str, user = Depends(get_current_user)):
+    """Delete a specific message"""
+    user_id = user["id"]
     
-    # Get conversation memories
-    result = await db.execute(
-        select(Memory)
-        .where(Memory.user_id == user_uuid)
-        .where(Memory.memory_type == MemoryType.CONVERSATION)
-        .order_by(Memory.created_at.desc())
-        .limit(limit)
-    )
-    conversations = result.scalars().all()
+    if user_id in chat_history:
+        chat_history[user_id] = [
+            msg for msg in chat_history[user_id] 
+            if msg["id"] != message_id
+        ]
     
-    messages = []
-    for conv in conversations:
-        try:
-            data = json.loads(conv.content)
-            # Add user message
-            messages.append({
-                "id": f"{conv.id}_user",
-                "content": data.get("user_message", ""),
-                "role": "user",
-                "timestamp": conv.created_at.isoformat()
-            })
-            # Add assistant response
-            messages.append({
-                "id": f"{conv.id}_assistant",
-                "content": data.get("assistant_response", ""),
-                "role": "assistant",
-                "timestamp": conv.created_at.isoformat(),
-                "metadata": data.get("metadata", {})
-            })
-        except:
-            continue
-    
-    # Reverse to get chronological order
-    messages.reverse()
-    
-    return {"messages": messages}
+    return {"status": "deleted"}
