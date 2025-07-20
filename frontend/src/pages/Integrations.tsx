@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import ModernGmailIntegration from '../components/ModernGmailIntegration';
 import ModernCalendarIntegration from '../components/ModernCalendarIntegration';
 import ModernTodoistIntegration from '../components/ModernTodoistIntegration';
+import ModernOutlookIntegration from '../components/ModernOutlookIntegration';
 import ScreenObserver from '../components/ScreenObserver';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
@@ -25,6 +26,7 @@ const Integrations = () => {
     const gmailStatus = searchParams.get('gmail');
     const calendarStatus = searchParams.get('calendar');
     const todoistStatus = searchParams.get('todoist');
+    const outlookStatus = searchParams.get('outlook');
     const email = searchParams.get('email');
     const message = searchParams.get('message');
 
@@ -70,6 +72,20 @@ const Integrations = () => {
       });
       // Clean URL
       window.history.replaceState({}, document.title, '/integrations');
+    } else if (outlookStatus === 'connected') {
+      setNotification({
+        type: 'success',
+        message: 'Successfully connected Microsoft Outlook'
+      });
+      // Clean URL
+      window.history.replaceState({}, document.title, '/integrations');
+    } else if (outlookStatus === 'error') {
+      setNotification({
+        type: 'error',
+        message: message || 'Failed to connect Outlook'
+      });
+      // Clean URL
+      window.history.replaceState({}, document.title, '/integrations');
     }
 
     fetchIntegrationStatus();
@@ -78,7 +94,19 @@ const Integrations = () => {
   const fetchIntegrationStatus = async () => {
     try {
       const response = await api.get('/api/integrations/status');
-      setIntegrationStatus(response.data.integrations);
+      // API returns array, convert to object
+      const statusObj: Record<string, IntegrationStatus> = {};
+      if (Array.isArray(response.data)) {
+        response.data.forEach((integration: any) => {
+          const key = integration.name.toLowerCase().replace(' ', '_');
+          statusObj[key] = {
+            connected: integration.status === 'connected',
+            status: integration.status,
+            last_sync: integration.last_sync
+          };
+        });
+      }
+      setIntegrationStatus(statusObj);
     } catch (error) {
       console.error('Error fetching integration status:', error);
     }
@@ -182,11 +210,20 @@ const Integrations = () => {
           <ModernTodoistIntegration />
         </motion.div>
 
-        {/* Screen Observer */}
+        {/* Outlook Integration */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+        >
+          <ModernOutlookIntegration />
+        </motion.div>
+
+        {/* Screen Observer */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
           className="glass-dark rounded-xl p-6"
         >
           <ScreenObserver />

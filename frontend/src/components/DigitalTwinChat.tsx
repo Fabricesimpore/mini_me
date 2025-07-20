@@ -59,13 +59,12 @@ const DigitalTwinChat: React.FC = () => {
 
     try {
       const response = await api.post('/api/chat/message', {
-        message: input,
-        user_id: user?.id
+        content: input
       })
 
       const assistantMessage: Message = {
         id: response.data.id,
-        content: response.data.response,
+        content: response.data.content,
         role: 'assistant',
         timestamp: new Date(response.data.timestamp),
         metadata: response.data.metadata

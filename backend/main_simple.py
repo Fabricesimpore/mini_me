@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -117,6 +121,13 @@ try:
     logger.info("Todoist router loaded")
 except Exception as e:
     logger.error(f"Could not load todoist router: {e}")
+
+try:
+    from api import outlook_simple as outlook
+    app.include_router(outlook.router, prefix="/api/outlook", tags=["outlook"])
+    logger.info("Outlook router loaded")
+except Exception as e:
+    logger.error(f"Could not load outlook router: {e}")
 
 try:
     from api import screen_observer_simple as screen_observer

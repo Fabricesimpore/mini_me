@@ -74,16 +74,49 @@ const ModernGmailIntegration: React.FC = () => {
   const handleConnect = async () => {
     setLoading(true)
     try {
-      // In a real app, this would open OAuth flow
-      await api.post('/api/gmail/connect', {}, {
+      // Get OAuth URL from backend
+      const response = await api.get('/api/gmail/auth', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      toast.success('Gmail connected successfully!')
-      checkStatus()
+      
+      const authUrl = response.data.auth_url
+      
+      if (authUrl) {
+        // Open OAuth flow in new window
+        const width = 500
+        const height = 600
+        const left = window.screen.width / 2 - width / 2
+        const top = window.screen.height / 2 - height / 2
+        
+        const authWindow = window.open(
+          authUrl,
+          'Gmail Authorization',
+          `width=${width},height=${height},left=${left},top=${top}`
+        )
+        
+        // Check if window was closed
+        const checkInterval = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkInterval)
+            setLoading(false)
+            // Check status after a delay to allow callback to process
+            setTimeout(() => {
+              checkStatus()
+              loadInsights()
+            }, 1000)
+          }
+        }, 500)
+      } else {
+        // Fallback to mock connection
+        await api.post('/api/gmail/connect', {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        toast.success('Gmail connected (demo mode)')
+        checkStatus()
+      }
     } catch (error) {
       console.error('Failed to connect Gmail:', error)
       toast.error('Failed to connect Gmail')
-    } finally {
       setLoading(false)
     }
   }

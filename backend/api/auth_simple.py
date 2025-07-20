@@ -145,3 +145,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         username=user["username"],
         created_at=user["created_at"]
     )
+
+# Initialize test user on module load
+if "test@example.com" not in users_db:
+    test_user = {
+        "id": "user-test",
+        "email": "test@example.com",
+        "username": "testuser",
+        "password": get_password_hash("test123"),
+        "created_at": datetime.utcnow()
+    }
+    users_db["test@example.com"] = test_user

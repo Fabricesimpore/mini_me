@@ -8,8 +8,8 @@ const Login = () => {
   const navigate = useNavigate()
   const login = useAuthStore((state) => state.login)
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: 'test@example.com',
+    password: 'test123',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

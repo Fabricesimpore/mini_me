@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "created_at": "2025-01-20",
+  "models": {
+    "communication_style": {
+      "vectorizer": "communication_vectorizer.pkl",
+      "classifier": "communication_classifier.pkl",
+      "classes": [
+        "analytical",
+        "direct",
+        "collaborative",
+        "creative"
+      ]
+    },
+    "behavioral_pattern": {
+      "model": "behavioral_pattern_model.pth",
+      "input_size": 10,
+      "patterns": [
+        "focused",
+        "multitasking",
+        "break-taking",
+        "deep-work",
+        "collaborative"
+      ]
+    },
+    "productivity": {
+      "scaler": "productivity_scaler.pkl",
+      "model": "productivity_model.pkl",
+      "scale": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "learning_style": {
+      "scaler": "learning_scaler.pkl",
+      "model": "learning_model.pkl",
+      "styles": [
+        "kinesthetic",
+        "visual",
+        "reading",
+        "social"
+      ]
+    }
+  }
+}

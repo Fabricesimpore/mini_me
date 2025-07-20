@@ -19,7 +19,10 @@ const ModernChat: React.FC = () => {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const { token } = useAuthStore()
 
   const scrollToBottom = () => {
@@ -43,6 +46,40 @@ const ModernChat: React.FC = () => {
       setMessages(response.data)
     } catch (error) {
       console.error('Failed to load chat history:', error)
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data)
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+        // For now, just show a message that recording is complete
+        toast.success('Voice recording complete (feature in development)')
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      toast.success('Recording started...')
+    } catch (error) {
+      toast.error('Failed to access microphone')
+      console.error('Recording error:', error)
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
     }
   }
 
@@ -179,8 +216,11 @@ const ModernChat: React.FC = () => {
               disabled={isLoading}
             />
           </div>
-          <button className="p-3 hover:bg-white/10 rounded-lg transition-colors">
-            <Mic className="w-5 h-5 text-gray-400" />
+          <button 
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-3 hover:bg-white/10 rounded-lg transition-colors ${isRecording ? 'bg-red-500/20' : ''}`}
+          >
+            <Mic className={`w-5 h-5 ${isRecording ? 'text-red-400 animate-pulse' : 'text-gray-400'}`} />
           </button>
           <motion.button
             whileHover={{ scale: 1.05 }}

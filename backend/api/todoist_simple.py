@@ -39,3 +39,10 @@ async def connect_todoist():
     global todoist_connected
     todoist_connected = True
     return {"status": "connected", "message": "Todoist connected successfully"}
+
+@router.post("/disconnect")
+async def disconnect_todoist():
+    """Mock Todoist disconnection"""
+    global todoist_connected
+    todoist_connected = False
+    return {"status": "disconnected", "message": "Todoist disconnected successfully"}

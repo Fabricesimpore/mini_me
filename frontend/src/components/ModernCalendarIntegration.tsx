@@ -73,14 +73,46 @@ const ModernCalendarIntegration: React.FC = () => {
   const handleConnect = async () => {
     setLoading(true)
     try {
-      await api.post('/api/calendar/connect', {}, {
+      // Get OAuth URL from backend
+      const response = await api.get('/api/calendar/auth', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      toast.success('Calendar connected successfully!')
-      checkStatus()
+      
+      const authUrl = response.data.auth_url
+      
+      if (authUrl) {
+        // Open OAuth flow in new window
+        const width = 500
+        const height = 600
+        const left = window.screen.width / 2 - width / 2
+        const top = window.screen.height / 2 - height / 2
+        
+        const authWindow = window.open(
+          authUrl,
+          'Google Calendar Authorization',
+          `width=${width},height=${height},left=${left},top=${top}`
+        )
+        
+        // Check if window was closed
+        const checkInterval = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkInterval)
+            setLoading(false)
+            // Check status after a delay to allow callback to process
+            setTimeout(() => {
+              checkStatus()
+              loadInsights()
+            }, 1000)
+          }
+        }, 500)
+      } else {
+        // Show message if OAuth not configured
+        toast.error(response.data.message || 'OAuth not configured')
+        setLoading(false)
+      }
     } catch (error) {
+      console.error('Failed to connect Calendar:', error)
       toast.error('Failed to connect Calendar')
-    } finally {
       setLoading(false)
     }
   }
